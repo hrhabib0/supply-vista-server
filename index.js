@@ -32,40 +32,46 @@ async function run() {
 
         // Porducts related api
         // post a product to database
-        app.post('/products', async(req, res)=>{
+        app.post('/products', async (req, res) => {
             const productData = req.body;
             const result = await productsCollections.insertOne(productData);
             res.send(result)
-            
+
         })
         // get all products api
-        app.get('/products', async(req, res)=>{
-            const cursor = productsCollections.find();
+        app.get('/products', async (req, res) => {
+            const category = req.query.category? decodeURIComponent(req.query.category) : null // get category
+            // console.log("category", category)
+            const query = category ? {
+                category: category
+            } : {}
+            // console.log(query)
+            const cursor = productsCollections.find(query);
             const result = await cursor.toArray();
             res.send(result)
         })
         // get single product api
-        app.get('/products/:id', async(req,res)=>{
+        app.get('/products/:id', async (req, res) => {
             const id = req.params.id;
-            const query = {_id : new ObjectId(id)};
+            const query = { _id: new ObjectId(id) };
             const result = await productsCollections.findOne(query);
             res.send(result);
         })
         // update data
-        app.put('/products/:id', async(req,res)=>{
+        app.put('/products/:id', async (req, res) => {
             const id = req.params.id;
-            const filter = {_id : new ObjectId(id)};
+            const filter = { _id: new ObjectId(id) };
             const options = { upsert: true };
             const updatedProduct = req.body;
             const updatedDoc = {
-                $set : updatedProduct
+                $set: updatedProduct
             }
-            const result = await productsCollections.updateOne(filter,updatedDoc,options)
+            const result = await productsCollections.updateOne(filter, updatedDoc, options)
             res.send(result);
         })
 
         // categories related api
-        app.get('/categories', async(req,res)=>{
+        app.get('/categories', async (req, res) => {
             const result = await categoriesCollections.find().toArray()
             res.send(result)
         })
