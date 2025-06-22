@@ -27,7 +27,8 @@ async function run() {
         await client.connect();
 
         // collections
-        const productsCollections = client.db('supplyVista').collection('products')
+        const productsCollections = client.db('supplyVista').collection('products');
+        const categoriesCollections = client.db('supplyVista').collection('categories');
 
         // Porducts related api
         // post a product to database
@@ -61,6 +62,12 @@ async function run() {
             }
             const result = await productsCollections.updateOne(filter,updatedDoc,options)
             res.send(result);
+        })
+
+        // categories related api
+        app.get('/categories', async(req,res)=>{
+            const result = await categoriesCollections.find().toArray()
+            res.send(result)
         })
         // Send a ping to confirm a successful connection
         await client.db("admin").command({ ping: 1 });
