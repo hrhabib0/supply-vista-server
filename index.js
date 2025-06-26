@@ -1,9 +1,10 @@
+require('dotenv').config()
 const express = require('express');
 const cors = require('cors')
 const app = express();
 const port = process.env.PORT || 3000;
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
-require('dotenv').config()
+
 
 // middleWar
 app.use(cors());
@@ -24,11 +25,12 @@ const client = new MongoClient(uri, {
 async function run() {
     try {
         // Connect the client to the server	(optional starting in v4.7)
-        await client.connect();
+        // await client.connect();
 
         // collections
         const productsCollections = client.db('supplyVista').collection('products');
         const categoriesCollections = client.db('supplyVista').collection('categories');
+        const ordersCollections = client.db('supplyVista').collection('orders')
 
         // Porducts related api
         // post a product to database
@@ -36,12 +38,10 @@ async function run() {
             const productData = req.body;
             const result = await productsCollections.insertOne(productData);
             res.send(result)
-
         })
         // get all products api
         app.get('/products', async (req, res) => {
-            const category = req.query.category? decodeURIComponent(req.query.category) : null // get category
-            // console.log("category", category)
+            const category = req.query.category ? decodeURIComponent(req.query.category) : null // get category
             const query = category ? {
                 category: category
             } : {}
@@ -75,9 +75,27 @@ async function run() {
             const result = await categoriesCollections.find().toArray()
             res.send(result)
         })
+
+
+        // Orders related api
+        app.post('/orders', async(req,res)=>{
+            const orderData = req.body;
+            
+            const result = await ordersCollections.insertOne(orderData);
+            if(result.acknowledged){
+                const {orderId, order_quantity} = orderData
+                await productsCollections.updateOne({_id: new ObjectId(orderId)}, {
+                    $inc:{
+                        total: -order_quantity
+                    }
+                })
+            }
+            res.send(result)
+            
+        })
         // Send a ping to confirm a successful connection
-        await client.db("admin").command({ ping: 1 });
-        console.log("Pinged your deployment. You successfully connected to MongoDB!");
+        // await client.db("admin").command({ ping: 1 });
+        // console.log("Pinged your deployment. You successfully connected to MongoDB!");
     } finally {
         // Ensures that the client will close when you finish/error
         // await client.close();
