@@ -93,6 +93,48 @@ async function run() {
             res.send(result)
             
         })
+
+        app.get('/orders', async(req, res)=>{
+            const email = req.query?.email;
+            const filter = {customer_email : email};
+            const result = await ordersCollections.find(filter).toArray();
+
+            //aggregate data
+            for (const order of result){
+                const orderId = order.orderId;
+                const orderQuery = {_id : new ObjectId(orderId)}
+                const product = await productsCollections.findOne(orderQuery)
+                order.productName = product.productName
+                order.product_image = product.product_image
+                order.category = product.category
+                order.minimumSell = product.minimumSell
+                order.description = product.description
+                order.price = product.price
+                order.rating = product.rating
+                order.brand = product.brand
+            }
+            res.send(result)
+
+        })
+        // delete api to delete orders from database
+        app.delete('/orders/:id', async(req, res)=>{
+            const id = req.params.id;
+            const query = {_id: new ObjectId(id)};
+            const order = await ordersCollections.findOne(query)
+            const orderId = order.orderId;
+            const order_quantity = order.order_quantity
+            const result = await ordersCollections.deleteOne(query);
+            
+            // increase total stock after remove from cart
+            if(result.acknowledged){
+                await productsCollections.updateOne({_id: new ObjectId(orderId)}, {
+                    $inc:{
+                        total: order_quantity
+                    }
+                })
+            }
+            res.send(result)
+        })
         // Send a ping to confirm a successful connection
         // await client.db("admin").command({ ping: 1 });
         // console.log("Pinged your deployment. You successfully connected to MongoDB!");
