@@ -42,11 +42,17 @@ async function run() {
         // get all products api
         app.get('/products', async (req, res) => {
             const category = req.query.category ? decodeURIComponent(req.query.category) : null // get category
-            const query = category ? {
-                category: category
-            } : {}
-            // console.log(query)
-            const cursor = productsCollections.find(query);
+            const email = req.query?.email; //get email
+             console.log('user',email)
+             const filter = {}
+            // const filter = {brand_email : email};    // match and filter
+            if(email){
+                filter.brand_email = email;
+            }
+            if(category){
+                filter.category = category;
+            }
+            const cursor = productsCollections.find(filter);
             const result = await cursor.toArray();
             res.send(result)
         })
