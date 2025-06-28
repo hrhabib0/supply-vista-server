@@ -3,6 +3,11 @@ const express = require('express');
 const cors = require('cors')
 const app = express();
 const port = process.env.PORT || 3000;
+
+const admin = require("firebase-admin");
+const decoded = Buffer.from(process.env.FireBase_Service_Key, 'base64').toString('utf8');
+const serviceAccount = JSON.parse(decoded);
+
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 
 
@@ -22,6 +27,33 @@ const client = new MongoClient(uri, {
     }
 });
 
+
+admin.initializeApp({
+    credential: admin.credential.cert(serviceAccount)
+});
+
+const verifyFireBaseToken = async (req, res, next) => {
+    const authHeader = req.headers?.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        return res.status(401).send({ message: 'Unauthorized access' })
+    }
+    const token = authHeader.split(' ')[1]  //split token and get only the token except bearer.
+    try {
+        const decodedToken = await admin.auth().verifyIdToken(token);
+        req.decoded = decodedToken;
+        next()
+    } catch (error) {
+        return res.status(401).send({ message: 'Unauthorized access' })
+    }
+}
+
+const verifyTokenEmail = (req, res, next) => {
+    if (req.query.email !== req.decoded.email) {
+        return res.status(403).send({ message: 'forbidden access' })
+    }
+    next()
+}
+
 async function run() {
     try {
         // Connect the client to the server	(optional starting in v4.7)
@@ -40,16 +72,16 @@ async function run() {
             res.send(result)
         })
         // get all products api
-        app.get('/products', async (req, res) => {
+        app.get('/products', verifyFireBaseToken, verifyTokenEmail, async (req, res) => {
             const category = req.query.category ? decodeURIComponent(req.query.category) : null // get category
             const email = req.query?.email; //get email
-             console.log('user',email)
-             const filter = {}
+
+            const filter = {}
             // const filter = {brand_email : email};    // match and filter
-            if(email){
+            if (email) {
                 filter.brand_email = email;
             }
-            if(category){
+            if (category) {
                 filter.category = category;
             }
             const cursor = productsCollections.find(filter);
@@ -82,33 +114,30 @@ async function run() {
             res.send(result)
         })
 
-
         // Orders related api
-        app.post('/orders', async(req,res)=>{
+        app.post('/orders', async (req, res) => {
             const orderData = req.body;
-            
             const result = await ordersCollections.insertOne(orderData);
-            if(result.acknowledged){
-                const {orderId, order_quantity} = orderData
-                await productsCollections.updateOne({_id: new ObjectId(orderId)}, {
-                    $inc:{
+            if (result.acknowledged) {
+                const { orderId, order_quantity } = orderData
+                await productsCollections.updateOne({ _id: new ObjectId(orderId) }, {
+                    $inc: {
                         total: -order_quantity
                     }
                 })
             }
             res.send(result)
-            
         })
 
-        app.get('/orders', async(req, res)=>{
+        app.get('/orders', verifyFireBaseToken, verifyTokenEmail, async (req, res) => {
             const email = req.query?.email;
-            const filter = {customer_email : email};
-            const result = await ordersCollections.find(filter).toArray();
 
+            const filter = { customer_email: email };
+            const result = await ordersCollections.find(filter).toArray();
             //aggregate data
-            for (const order of result){
+            for (const order of result) {
                 const orderId = order.orderId;
-                const orderQuery = {_id : new ObjectId(orderId)}
+                const orderQuery = { _id: new ObjectId(orderId) }
                 const product = await productsCollections.findOne(orderQuery)
                 order.productName = product.productName
                 order.product_image = product.product_image
@@ -123,18 +152,17 @@ async function run() {
 
         })
         // delete api to delete orders from database
-        app.delete('/orders/:id', async(req, res)=>{
+        app.delete('/orders/:id', async (req, res) => {
             const id = req.params.id;
-            const query = {_id: new ObjectId(id)};
+            const query = { _id: new ObjectId(id) };
             const order = await ordersCollections.findOne(query)
             const orderId = order.orderId;
             const order_quantity = order.order_quantity
             const result = await ordersCollections.deleteOne(query);
-            
             // increase total stock after remove from cart
-            if(result.acknowledged){
-                await productsCollections.updateOne({_id: new ObjectId(orderId)}, {
-                    $inc:{
+            if (result.acknowledged) {
+                await productsCollections.updateOne({ _id: new ObjectId(orderId) }, {
+                    $inc: {
                         total: order_quantity
                     }
                 })
