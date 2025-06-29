@@ -48,7 +48,7 @@ const verifyFireBaseToken = async (req, res, next) => {
 }
 
 const verifyTokenEmail = (req, res, next) => {
-    if (req.query.email !== req.decoded.email) {
+    if (req.query?.email !== req.decoded?.email) {
         return res.status(403).send({ message: 'forbidden access' })
     }
     next()
@@ -72,12 +72,13 @@ async function run() {
             res.send(result)
         })
         // get all products api
-        app.get('/products', verifyFireBaseToken, verifyTokenEmail, async (req, res) => {
+        app.get('/products',  verifyFireBaseToken, async (req, res) => {
             const category = req.query.category ? decodeURIComponent(req.query.category) : null // get category
             const email = req.query?.email; //get email
+            // console.log('catergory', category)
+            // console.log('email', email)
 
             const filter = {}
-            // const filter = {brand_email : email};    // match and filter
             if (email) {
                 filter.brand_email = email;
             }
