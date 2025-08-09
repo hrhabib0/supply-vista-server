@@ -72,11 +72,9 @@ async function run() {
             res.send(result)
         })
         // get all products api
-        app.get('/products',  verifyFireBaseToken, async (req, res) => {
+        app.get('/products', async (req, res) => {
             const category = req.query.category ? decodeURIComponent(req.query.category) : null // get category
             const email = req.query?.email; //get email
-            // console.log('catergory', category)
-            // console.log('email', email)
 
             const filter = {}
             if (email) {
