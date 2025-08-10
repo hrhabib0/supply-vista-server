@@ -73,6 +73,13 @@ async function run() {
         })
         // get all products api
         app.get('/products', async (req, res) => {
+            const cursor = productsCollections.find();
+            const result = await cursor.toArray();
+            res.send(result)
+        })
+
+        // get user's added product
+        app.get('/products', verifyFireBaseToken, verifyTokenEmail, async (req, res) => {
             const category = req.query.category ? decodeURIComponent(req.query.category) : null // get category
             const email = req.query?.email; //get email
 
